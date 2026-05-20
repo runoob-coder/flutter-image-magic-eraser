@@ -1,20 +1,24 @@
+## 1.0.5
+
+- Replaced onnxruntime with flutter_onnxruntime
+
 ## 1.0.4
 
 ### Improver:
 
-  - Added option to do Image processing using CPU and GPU
-  - Refactored ImageProcessingService
+- Added option to do Image processing using CPU and GPU
+- Refactored ImageProcessingService
 
 ## 1.0.3
 
 ### Improved:
 
-  - Implemented dedicated ModelDownloadService for improved separation of concerns
-  - Added HTTP status code validation to detect invalid URLs or unavailable resources
-  - Implemented file size validation to detect incomplete downloads
-  - Implemented memory-efficient chunked file reading for checksum calculation
-  - Improved integrity check flow to only verify after successful downloads
-  - Added automatic cleanup of partial files when downloads fail
+- Implemented dedicated ModelDownloadService for improved separation of concerns
+- Added HTTP status code validation to detect invalid URLs or unavailable resources
+- Implemented file size validation to detect incomplete downloads
+- Implemented memory-efficient chunked file reading for checksum calculation
+- Improved integrity check flow to only verify after successful downloads
+- Added automatic cleanup of partial files when downloads fail
 
 ## 1.0.2
 
@@ -36,5 +40,6 @@
 ## 1.0.0
 
 ### Added
+
 - Initial release of the **Image Magic Eraser** Flutter package.
 - ONNX Runtime integration for image inpainting using the `onnx` model.

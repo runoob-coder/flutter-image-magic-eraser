@@ -5,7 +5,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_magic_eraser/src/services/image_processing/tensor_processor.dart';
-import 'package:onnxruntime/onnxruntime.dart';
+import 'package:flutter_onnxruntime/flutter_onnxruntime.dart';
 
 import '../models/bounding_box.dart';
 import '../models/inpainting_config.dart';
@@ -404,12 +404,12 @@ class PolygonInpaintingService {
           .convertUIMaskToFloatTensor(grayscaleMask);
 
       // Create tensors for ONNX model
-      final imageTensor = OrtValueTensor.createTensorWithDataList(
+      final imageTensor = await OrtValue.fromList(
         Float32List.fromList(rgbFloats),
         [1, 3, image.width, image.height],
       );
 
-      final maskTensor = OrtValueTensor.createTensorWithDataList(
+      final maskTensor = await OrtValue.fromList(
         Float32List.fromList(maskFloats),
         [1, 1, mask.width, mask.height],
       );
@@ -420,19 +420,28 @@ class PolygonInpaintingService {
         'mask': maskTensor,
       };
 
-      final outputs = await OnnxModelService.instance.runInference(inputs);
-
-      // Release tensors
-      imageTensor.release();
-      maskTensor.release();
+      Map<String, OrtValue> outputs;
+      try {
+        outputs = await OnnxModelService.instance.runInference(inputs);
+      } finally {
+        await imageTensor.dispose();
+        await maskTensor.dispose();
+      }
 
       // Process output
-      final outputTensor = outputs?[0]?.value;
-      if (outputTensor is List) {
-        final output = outputTensor[0];
-        return await ImageProcessingService.instance.rgbTensorToUIImage(output);
-      } else {
-        throw Exception('Unexpected output format from ONNX model.');
+      final outputValue = outputs.values.first;
+      try {
+        final outputList = await outputValue.asList();
+        final rgbOutput = TensorProcessor.castRgbTensorOutput(
+          outputList,
+          shape: outputValue.shape,
+        );
+        return await ImageProcessingService.instance
+            .rgbTensorToUIImage(rgbOutput);
+      } finally {
+        for (final value in outputs.values) {
+          await value.dispose();
+        }
       }
     } catch (e) {
       if (kDebugMode) {
@@ -462,12 +471,12 @@ class PolygonInpaintingService {
           await ImageProcessingService.instance.imageMaskToFloatTensor(mask);
 
       // Create tensors for ONNX model
-      final imageTensor = OrtValueTensor.createTensorWithDataList(
+      final imageTensor = await OrtValue.fromList(
         Float32List.fromList(rgbFloats),
         [1, 3, image.width, image.height],
       );
 
-      final maskTensor = OrtValueTensor.createTensorWithDataList(
+      final maskTensor = await OrtValue.fromList(
         Float32List.fromList(maskFloats),
         [1, 1, mask.width, mask.height],
       );
@@ -478,19 +487,27 @@ class PolygonInpaintingService {
         'mask': maskTensor,
       };
 
-      final outputs = await OnnxModelService.instance.runInference(inputs);
-
-      // Release tensors
-      imageTensor.release();
-      maskTensor.release();
+      Map<String, OrtValue> outputs;
+      try {
+        outputs = await OnnxModelService.instance.runInference(inputs);
+      } finally {
+        await imageTensor.dispose();
+        await maskTensor.dispose();
+      }
 
       // Process output
-      final outputTensor = outputs?[0]?.value;
-      if (outputTensor is List) {
-        final output = outputTensor[0];
-        return await TensorProcessor.rgbTensorToImgImage(output);
-      } else {
-        throw Exception('Unexpected output format from ONNX model.');
+      final outputValue = outputs.values.first;
+      try {
+        final outputList = await outputValue.asList();
+        final rgbOutput = TensorProcessor.castRgbTensorOutput(
+          outputList,
+          shape: outputValue.shape,
+        );
+        return await TensorProcessor.rgbTensorToImgImage(rgbOutput);
+      } finally {
+        for (final value in outputs.values) {
+          await value.dispose();
+        }
       }
     } catch (e) {
       if (kDebugMode) {

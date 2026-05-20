@@ -220,6 +220,46 @@ class TensorProcessor {
 
     return result.floats;
   }
+
+  /// Converts a nested list from [OrtValue.asList] into [List<List<List<double>>>].
+  ///
+  /// ONNX outputs use [List<dynamic>] with [num] values. This also unwraps an
+  /// optional batch dimension when shape is `[1, C, H, W]`.
+  static List<List<List<double>>> castRgbTensorOutput(
+    dynamic raw, {
+    List<int>? shape,
+  }) {
+    dynamic tensor = raw;
+
+    if (shape != null && shape.length == 4 && shape[0] == 1) {
+      if (tensor is List && tensor.length == 1) {
+        tensor = tensor.first;
+      }
+    } else if (tensor is List &&
+        tensor.length == 1 &&
+        tensor.first is List &&
+        (tensor.first as List).isNotEmpty &&
+        (tensor.first as List).first is List &&
+        ((tensor.first as List).first as List).isNotEmpty &&
+        ((tensor.first as List).first as List).first is! List) {
+      // Fallback: [1, C, H, W] without shape metadata
+      tensor = tensor.first;
+    }
+
+    if (tensor is! List) {
+      throw ArgumentError('Invalid ONNX RGB tensor output: $raw');
+    }
+
+    return [
+      for (final channel in tensor)
+        [
+          for (final row in channel as List)
+            [
+              for (final value in row as List) (value as num).toDouble(),
+            ],
+        ],
+    ];
+  }
 }
 
 /// Converts an image to a float tensor in an isolate

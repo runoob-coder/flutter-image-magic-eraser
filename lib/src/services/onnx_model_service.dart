@@ -2,8 +2,7 @@ import 'dart:async';
 import 'dart:developer';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
-import 'package:onnxruntime/onnxruntime.dart';
+import 'package:flutter_onnxruntime/flutter_onnxruntime.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:crypto/crypto.dart';
 
@@ -23,6 +22,8 @@ class OnnxModelService {
 
   /// Returns the singleton instance of the service
   static OnnxModelService get instance => _instance;
+
+  final OnnxRuntime _onnxRuntime = OnnxRuntime();
 
   /// The ONNX session used for inference
   OrtSession? _session;
@@ -286,10 +287,11 @@ class OnnxModelService {
     }
   }
 
-  /// Initializes the ONNX environment and creates a session
+  /// Initializes the ONNX runtime and creates a session
   ///
-  /// This method should be called once before using the model for inference
-  /// It runs in an isolate to prevent UI freezing
+  /// This method should be called once before using the model for inference.
+  /// Sessions are created on the main isolate because flutter_onnxruntime
+  /// uses platform channels.
   Future<void> initializeModel(String modelPath, {bool isAsset = true}) async {
     try {
       _setState(ModelLoadingState.loading);
@@ -299,69 +301,38 @@ class OnnxModelService {
             name: "OnnxModelService");
       }
 
-      // Initialize the ONNX runtime environment in the main isolate
-      // This is required before creating a session
-      if (kDebugMode) {
-        log('Initializing ONNX runtime environment', name: "OnnxModelService");
-      }
-      OrtEnv.instance.init();
+      final sessionOptions = OrtSessionOptions(intraOpNumThreads: 2);
 
       if (isAsset) {
-        // For assets, we need to load the bytes in the main isolate
-        // as rootBundle is not available in compute isolates
         if (kDebugMode) {
-          log('Reading asset file: $modelPath', name: "OnnxModelService");
+          log('Creating ONNX session from asset', name: "OnnxModelService");
         }
-        final rawAssetFile = await rootBundle.load(modelPath);
-        final bytes = rawAssetFile.buffer.asUint8List();
-
-        if (kDebugMode) {
-          final sizeMB = (bytes.length / (1024 * 1024)).toStringAsFixed(2);
-          log('Asset loaded, size: $sizeMB MB', name: "OnnxModelService");
-        }
-
-        // Create session in isolate with the loaded bytes
-        if (kDebugMode) {
-          log('Creating ONNX session from asset in isolate',
-              name: "OnnxModelService");
-        }
-        final session = await compute(
-            _createSessionFromBytes, ModelInitData(modelPath, bytes));
-        _session = session;
-
-        // Suggest garbage collection after session creation
-        await Future.delayed(Duration.zero);
+        _session = await _onnxRuntime.createSessionFromAsset(
+          modelPath,
+          options: sessionOptions,
+        );
       } else {
-        // For files, we'll pass only the path and let the isolate read the file directly
-        // This avoids loading the entire file into memory twice
-        if (kDebugMode) {
-          log('Creating ONNX session from file in isolate',
-              name: "OnnxModelService");
-        }
-
-        // Check if file exists before attempting to load
         final file = File(modelPath);
         if (!await file.exists()) {
           _setState(ModelLoadingState.loadingError);
           throw Exception('Model file not found: $modelPath');
         }
 
-        // Get file size for logging
         final fileSize = await file.length();
         if (kDebugMode) {
           final sizeMB = (fileSize / (1024 * 1024)).toStringAsFixed(2);
-          log('File size: $sizeMB MB', name: "OnnxModelService");
+          log('Creating ONNX session from file ($sizeMB MB)',
+              name: "OnnxModelService");
         }
 
-        // Create session in isolate passing only the path
-        final session = await compute(
-            _createSessionFromPath, ModelPathData(modelPath, false));
-        _session = session;
+        _session = await _onnxRuntime.createSession(
+          modelPath,
+          options: sessionOptions,
+        );
       }
 
       _setState(ModelLoadingState.loaded);
 
-      // Suggest garbage collection after successful loading
       await Future.delayed(Duration.zero);
 
       if (kDebugMode) {
@@ -377,78 +348,23 @@ class OnnxModelService {
     }
   }
 
-  /// Static method to create an ONNX session in an isolate from byte array
-  static Future<OrtSession> _createSessionFromBytes(ModelInitData data) async {
-    try {
-      // Initialize ORT environment in the isolate
-      OrtEnv.instance.init();
-
-      // Create session options with optimizations
-      final sessionOptions = OrtSessionOptions()
-        ..setIntraOpNumThreads(2); // Limit threads to reduce memory pressure
-
-      // Create the session from the model bytes
-      final session = OrtSession.fromBuffer(data.modelBytes, sessionOptions);
-
-      // Help the GC know it can reclaim memory
-      //data = null;
-
-      return session;
-    } catch (e) {
-      throw Exception('Error creating ONNX session in isolate: $e');
-    }
-  }
-
-  /// Static method to create an ONNX session in an isolate from file path
-  static Future<OrtSession> _createSessionFromPath(ModelPathData data) async {
-    try {
-      // Initialize ORT environment in the isolate
-      OrtEnv.instance.init();
-
-      // Create session options with optimizations
-      final sessionOptions = OrtSessionOptions()
-        ..setIntraOpNumThreads(2); // Limit threads to reduce memory pressure
-
-      // Read file in isolate to avoid main thread memory duplication
-      final file = File(data.modelPath);
-      final bytes = await file.readAsBytes();
-
-      // Create the session from the model bytes
-      final session = OrtSession.fromBuffer(bytes, sessionOptions);
-
-      // Help the GC know it can reclaim memory
-      // bytes = null;
-
-      return session;
-    } catch (e) {
-      throw Exception('Error creating ONNX session in isolate: $e');
-    }
-  }
-
   /// Runs inference on the model with the given inputs
   ///
-  /// [inputs] is a map of input names to OrtValueTensor objects
-  /// Returns a list of output values
-  Future<List<OrtValue?>?> runInference(Map<String, OrtValue> inputs) async {
+  /// [inputs] is a map of input names to [OrtValue] tensors
+  /// Returns a map of output names to [OrtValue] tensors
+  Future<Map<String, OrtValue>> runInference(
+      Map<String, OrtValue> inputs) async {
     if (_session == null) {
       throw Exception("ONNX session not initialized");
     }
 
-    OrtRunOptions? runOptions;
-    List<OrtValue?>? outputs;
-
     try {
-      runOptions = OrtRunOptions();
-      outputs = await _session!.runAsync(runOptions, inputs);
-      return outputs;
+      return await _session!.run(inputs);
     } catch (e) {
       if (kDebugMode) {
         log('Error running inference: $e', name: "OnnxModelService", error: e);
       }
       rethrow;
-    } finally {
-      // Always release run options
-      runOptions?.release();
     }
   }
 
@@ -459,9 +375,11 @@ class OnnxModelService {
 
   /// Disposes of resources when the service is no longer needed
   void dispose() {
-    if (_session != null) {
-      _session!.release();
-      _session = null;
+    final session = _session;
+    _session = null;
+
+    if (session != null) {
+      unawaited(session.close());
       _setState(ModelLoadingState.notLoaded);
       if (kDebugMode) {
         log('ONNX session released.', name: "OnnxModelService");

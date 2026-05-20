@@ -15,6 +15,7 @@ A Flutter package that removes objects from images using machine learning (LaMa 
 ---
 
 ## 🔭 Demo
+
 ![Demo](./doc/demo.gif)
 
 ## Getting Started
@@ -34,6 +35,55 @@ Then run:
 flutter pub get
 ```
 
+## 📋 Required development setup
+
+### Android
+
+Android build requires `proguard-rules.pro` inside your Android project at `android/app/` with the following content:
+
+```
+-keep class ai.onnxruntime.** { *; }
+```
+
+or running the below command from your terminal:
+
+```bash
+echo "-keep class ai.onnxruntime.** { *; }" > android/app/proguard-rules.pro
+```
+
+Refer to [troubleshooting.md](doc/troubleshooting.md) for more information.
+
+### iOS
+
+ONNX Runtime requires minimum version `iOS 16` and static linkage.
+
+In `ios/Podfile`, change the following lines:
+
+```bash
+platform :ios, '16.0'
+
+# existing code ...
+
+use_frameworks! :linkage => :static
+
+# existing code ...
+```
+
+### macOS
+
+macOS build requires minimum version `macOS 14`.
+
+- In `macos/Podfile`, change the following lines:
+
+  ```bash
+  platform :osx, '14.0'
+  ```
+
+- Change the "Minimum Deployments" to 14.0 in XCode. In your terminal:
+  ```bash
+  open Runner.xcworkspace
+  ```
+  In `Runner` -> `General`, change `Minimum Deployments` to `14.0`.
 
 ## 📚 Usage
 
@@ -54,7 +104,6 @@ await InpaintingService.instance.initializeOrt('assets/models/lama_fp32.onnx');
 
 > **Note:** The LaMa model file is quite large (~200MB) and will significantly increase your app size. If you have experience with model optimization and can provide a smaller ONNX model suitable for mobile image inpainting, we'd love to hear from you! Please reach out to us at info@max.al or dajanvulaj@gmail.com. We're actively looking for optimized alternatives to improve the package's footprint.
 
-
 2. Update your `pubspec.yaml` to include the model:
 
 ```yaml
@@ -69,7 +118,7 @@ You can also download and initialize the model directly from a URL:
 
 ```dart
 import 'package:image_magic_eraser/image_magic_eraser.dart';
-// Model URL: 
+// Model URL:
 String modelUrl = 'https://huggingface.co/Carve/LaMa-ONNX/resolve/main/lama_fp32.onnx';
 // SHA-256 checksum for model integrity verification
 String modelChecksum = '1faef5301d78db7dda502fe59966957ec4b79dd64e16f03ed96913c7a4eb68d6';
@@ -93,7 +142,7 @@ InpaintingService.instance.downloadProgressStream.listen((progress) {
   double percentage = progress.progress * 100;
   int downloadedMB = progress.downloaded ~/ (1024 * 1024);
   int totalMB = progress.total ~/ (1024 * 1024);
-  
+
   print('Downloaded: $downloadedMB MB / $totalMB MB ($percentage%)');
 });
 ```
@@ -101,11 +150,12 @@ InpaintingService.instance.downloadProgressStream.listen((progress) {
 > **Attention:** When model is loaded from assets update these `Xcode` Settings under `Runner` / `Build Settings` / `Deployment`
 
 `Strip Linked Product` : `No`  
-`Strip Style` : `Non-Global Symbols`  
-
+`Strip Style` : `Non-Global Symbols`
 
 ---
+
 ---
+
 ## Model Loading State Management
 
 The package provides a way to track the model loading state, which is particularly useful since model loading can take some time depending on the device. You can listen to state changes and update your UI accordingly:
@@ -145,7 +195,6 @@ InpaintingService.instance.modelLoadingStateStream.listen((state) {
 });
 ```
 
-
 ### (Method 1) : Using the ImageMaskSelector
 
 The package includes an interactive image selector widget that makes it easy for users to select areas to inpaint:
@@ -172,7 +221,7 @@ final result = await InpaintingService.instance.inpaint(
 );
 ```
 
-### (Method 2) : Inpainting with Polygons 
+### (Method 2) : Inpainting with Polygons
 
 Define areas to inpaint using polygons (each polygon is a list of points):
 
