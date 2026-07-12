@@ -1,3 +1,7 @@
+## 1.0.6
+
+- Updated flutter_onnxruntime to ^1.8.1
+
 ## 1.0.5
 
 - Replaced onnxruntime with flutter_onnxruntime
