@@ -1,0 +1,14 @@
+{
+  "pins" : [
+    {
+      "identity" : "onnxruntime-swift-package-manager",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/masicai/onnxruntime-swift-package-manager",
+      "state" : {
+        "revision" : "eab1ddb7622b40b6c03526a51f2384843f7af767",
+        "version" : "1.23.0"
+      }
+    }
+  ],
+  "version" : 2
+}

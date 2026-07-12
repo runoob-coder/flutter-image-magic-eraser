@@ -1,47 +1,15 @@
 PODS:
-  - file_selector_macos (0.0.1):
-    - FlutterMacOS
-  - flutter_onnxruntime (0.0.1):
-    - FlutterMacOS
-    - onnxruntime-objc (= 1.22.0)
   - FlutterMacOS (1.0.0)
-  - onnxruntime-c (1.22.0)
-  - onnxruntime-objc (1.22.0):
-    - onnxruntime-objc/Core (= 1.22.0)
-  - onnxruntime-objc/Core (1.22.0):
-    - onnxruntime-c (= 1.22.0)
-  - path_provider_foundation (0.0.1):
-    - Flutter
-    - FlutterMacOS
 
 DEPENDENCIES:
-  - file_selector_macos (from `Flutter/ephemeral/.symlinks/plugins/file_selector_macos/macos`)
-  - flutter_onnxruntime (from `Flutter/ephemeral/.symlinks/plugins/flutter_onnxruntime/macos`)
   - FlutterMacOS (from `Flutter/ephemeral`)
-  - path_provider_foundation (from `Flutter/ephemeral/.symlinks/plugins/path_provider_foundation/darwin`)
-
-SPEC REPOS:
-  trunk:
-    - onnxruntime-c
-    - onnxruntime-objc
 
 EXTERNAL SOURCES:
-  file_selector_macos:
-    :path: Flutter/ephemeral/.symlinks/plugins/file_selector_macos/macos
-  flutter_onnxruntime:
-    :path: Flutter/ephemeral/.symlinks/plugins/flutter_onnxruntime/macos
   FlutterMacOS:
     :path: Flutter/ephemeral
-  path_provider_foundation:
-    :path: Flutter/ephemeral/.symlinks/plugins/path_provider_foundation/darwin
 
 SPEC CHECKSUMS:
-  file_selector_macos: 6280b52b459ae6c590af5d78fc35c7267a3c4b31
-  flutter_onnxruntime: 07103445f6b566bf12df4ceae61ef7b901d3e6ec
   FlutterMacOS: d0db08ddef1a9af05a5ec4b724367152bb0500b1
-  onnxruntime-c: 7f778680e96145956c0a31945f260321eed2611a
-  onnxruntime-objc: 83d28b87525bd971259a66e153ea32b5d023de19
-  path_provider_foundation: 080d55be775b7414fd5a5ef3ac137b97b097e564
 
 PODFILE CHECKSUM: d50eefd1f107498484155a0d47af0044862070f8
 
